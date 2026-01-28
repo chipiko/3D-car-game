@@ -15,4 +15,5 @@ FIELD_OF_VIEW = 100
 COLORS = {
     'LIGHT':  {'road': '#6B6B6B', 'grass': '#10AA10', 'rumble': '#555555', 'lane': '#CCCCCC'},
     'DARK':   {'road': '#696969', 'grass': '#009A00', 'rumble': '#BBBBBB', 'lane': '#696969'},
+    'TREE': {'leaf': '#228B22', 'trunk': '#8B4513'} # მწვანე ფერი ხეებისთვის
 }

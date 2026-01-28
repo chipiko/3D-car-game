@@ -49,6 +49,20 @@ class Game:
             
             x1, y1, w1 = p1
             x2, y2, w2 = p2
+
+            # main.py - render() მეთოდის შიგნით, გზის ხატვის შემდეგ (ციკლშივე):
+
+            # --- გზის ხატვის მერე (იგივე for i in range ციკლში) ---
+            for obj in segment.objects:
+                # ობიექტის X პოზიცია ეკრანზე
+                # obj['pos'] არის -1.5 ან 1.5, რაც განსაზღვრავს მხარეს
+                sprite_x = x1 + (w1 * obj['pos'])
+                sprite_w = w1 * 0.3 # ხის ზომა გზის სიგანის პროპორციულია
+                sprite_h = sprite_w * 2 # სიმაღლე
+
+                # ხატავ ხეს (უბრალო მწვანე ოთხკუთხედი/სამკუთხედი)
+                pygame.draw.rect(self.screen, '#228B22', 
+                                (sprite_x - sprite_w/2, y1 - sprite_h, sprite_w, sprite_h))
             
             # თუ სეგმენტი ეკრანს ქვემოდან გასცდა, აღარ ვხატავთ
             if y2 >= y1:
