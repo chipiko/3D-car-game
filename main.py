@@ -4,6 +4,8 @@ from settings import *
 from engine.camera import Camera
 from objects.track import Track
 from objects.car import Car
+# main.py-ს დასაწყისში
+from ui.hud import HUD
 
 class Game:
     def __init__(self):
@@ -19,12 +21,21 @@ class Game:
         self.camera.z = 0
         self.player.pos_x = 0
         self.speed = 0
+        # main.py -> class Game -> def __init__
+        self.hud = HUD()
+        self.distance = 0 # გავლილი მანძილი
+
 
     def draw_polygon(self, color, x1, y1, w1, x2, y2, w2):
         points = [(x1 - w1, y1), (x2 - w2, y2), (x2 + w2, y2), (x1 + w1, y1)]
         pygame.draw.polygon(self.screen, color, points)
 
     def render(self):
+        # main.py -> def render-ის დასაწყისში
+        # ზედა ნაწილი (მუქი ცა)
+        pygame.draw.rect(self.screen, (0, 150, 255), (0, 0, WIDTH, HEIGHT // 2))
+        # ჰორიზონტი (უფრო ღია ცა)
+        pygame.draw.rect(self.screen, (135, 206, 235), (0, HEIGHT // 4, WIDTH, HEIGHT // 4))
         # 1. ცა
         self.screen.fill((135, 206, 235)) 
         
@@ -82,7 +93,8 @@ class Game:
         # 3. მანქანის ხატვა (ციკლის გარეთ!)
         # WIDTH // 2 - 40 არის ცენტრი, 80 სიგანე, 40 სიმაღლე
         pygame.draw.rect(self.screen, (255, 0, 0), (WIDTH // 2 - 40, HEIGHT - 100, 80, 40))
-
+        # main.py -> def render (ბოლოში)
+        self.hud.draw(self.screen, self.speed, self.distance)
     def update(self):
         keys = pygame.key.get_pressed()
         self.player.update(keys)
@@ -93,7 +105,8 @@ class Game:
             
         self.speed = max(0, min(self.speed, 200))
         self.camera.z += self.speed
-
+        # main.py -> def update
+        self.distance += self.speed # ყოველ კადრში ვუმატებთ სიჩქარეს
     def run(self):
         while True:
             for event in pygame.event.get():
