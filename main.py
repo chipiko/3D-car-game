@@ -31,70 +31,73 @@ class Game:
         pygame.draw.polygon(self.screen, color, points)
 
     def render(self):
-        # main.py -> def render-ის დასაწყისში
-        # ზედა ნაწილი (მუქი ცა)
-        pygame.draw.rect(self.screen, (0, 150, 255), (0, 0, WIDTH, HEIGHT // 2))
-        # ჰორიზონტი (უფრო ღია ცა)
-        pygame.draw.rect(self.screen, (135, 206, 235), (0, HEIGHT // 4, WIDTH, HEIGHT // 4))
-        # 1. ცა
-        self.screen.fill((135, 206, 235)) 
-        
-        player_z = self.camera.z
-        start_pos = int(player_z / SEGMENT_LENGTH)
-        
-        # კამერის ცენტრირება
-        self.camera.x = self.player.pos_x * ROAD_WIDTH
-
-        # 2. გზის ხატვა
-        # ვიწყებთ DRAW_DISTANCE-დან და ჩავდივართ -10-მდე, რომ ბოლომდე დაიხატოს
-        for i in range(DRAW_DISTANCE, -10, -1):
-            segment_index = (start_pos + i) % len(self.track.segments)
-            segment = self.track.segments[segment_index]
+            # 1. ცა (გრადიენტი)
+            # ჯერ ვხატავთ მუქ ნაწილს
+            pygame.draw.rect(self.screen, (0, 150, 255), (0, 0, WIDTH, HEIGHT // 2))
+            # შემდეგ ჰორიზონტს (უფრო ღია ცისფერს)
+            pygame.draw.rect(self.screen, (135, 206, 235), (0, HEIGHT // 4, WIDTH, HEIGHT // 4))
             
-            # მნიშვნელოვანია: segment.z - player_z აძლევს გლუვ მოძრაობას
-            p1 = self.camera.project(0, 0, segment.z - player_z, ROAD_WIDTH)
-            p2 = self.camera.project(0, 0, (segment.z + SEGMENT_LENGTH) - player_z, ROAD_WIDTH)
+            # მნიშვნელოვანი: self.screen.fill აქ აღარ გვჭირდება, თორემ ცას წაშლის!
+
+            player_z = self.camera.z
+            start_pos = int(player_z / SEGMENT_LENGTH)
             
-            if p1 is None or p2 is None:
-                continue
+            # კამერის ცენტრირება
+            self.camera.x = self.player.pos_x * ROAD_WIDTH
+
+            # 2. გზის და ობიექტების ხატვა (შორიდან ახლოსკენ)
+            for i in range(DRAW_DISTANCE, -10, -1):
+                segment_index = (start_pos + i) % len(self.track.segments)
+                segment = self.track.segments[segment_index]
+                
+                p1 = self.camera.project(0, 0, segment.z - player_z, ROAD_WIDTH)
+                p2 = self.camera.project(0, 0, (segment.z + SEGMENT_LENGTH) - player_z, ROAD_WIDTH)
+                
+                if p1 is None or p2 is None:
+                    continue
+                
+                x1, y1, w1 = p1
+                x2, y2, w2 = p2
+
+                # თუ სეგმენტი ეკრანს ქვემოდან გასცდა, აღარ ვხატავთ
+                if y2 >= y1:
+                    continue
+
+                # ა) ჯერ ვხატავთ გარემოს (ბალახი, გზა, რამბლი)
+                pygame.draw.rect(self.screen, segment.color['grass'], (0, y2, WIDTH, y1 - y2))
+                self.draw_polygon(segment.color['rumble'], x1, y1, w1 * 1.1, x2, y2, w2 * 1.1)
+                self.draw_polygon(segment.color['road'], x1, y1, w1, x2, y2, w2)
+                
+                # შუა ხაზები
+                if segment.color == COLORS['LIGHT']:
+                    self.draw_polygon(COLORS['LIGHT']['lane'], x1, y1, w1 * 0.02, x2, y2, w2 * 0.02)
+
+                # ბ) ობიექტებს (ხეებს) ვხატავთ გზის შემდეგ, რომ ზემოდან მოექცეს
+                for obj in segment.objects:
+                    sprite_x = x1 + (w1 * obj['pos'])
+                    sprite_w = w1 * 0.3
+                    sprite_h = sprite_w * 2
+
+                    # ხე
+                    pygame.draw.rect(self.screen, '#228B22', 
+                                    (sprite_x - sprite_w/2, y1 - sprite_h, sprite_w, sprite_h))
+
+            # 3. მანქანის დახატვა და დახრის ლოგიკა
+            keys = pygame.key.get_pressed()
+            tilt = 0
+            if keys[pygame.K_LEFT]: tilt = -5 
+            if keys[pygame.K_RIGHT]: tilt = 5
+
+            car_surface = pygame.Surface((80, 40), pygame.SRCALPHA)
+            pygame.draw.rect(car_surface, (255, 0, 0), (0, 0, 80, 40)) 
             
-            x1, y1, w1 = p1
-            x2, y2, w2 = p2
+            rotated_car = pygame.transform.rotate(car_surface, -tilt) 
+            rect = rotated_car.get_rect(center=(WIDTH // 2, HEIGHT - 80))
+            self.screen.blit(rotated_car, rect)
 
-            # main.py - render() მეთოდის შიგნით, გზის ხატვის შემდეგ (ციკლშივე):
-
-            # --- გზის ხატვის მერე (იგივე for i in range ციკლში) ---
-            for obj in segment.objects:
-                # ობიექტის X პოზიცია ეკრანზე
-                # obj['pos'] არის -1.5 ან 1.5, რაც განსაზღვრავს მხარეს
-                sprite_x = x1 + (w1 * obj['pos'])
-                sprite_w = w1 * 0.3 # ხის ზომა გზის სიგანის პროპორციულია
-                sprite_h = sprite_w * 2 # სიმაღლე
-
-                # ხატავ ხეს (უბრალო მწვანე ოთხკუთხედი/სამკუთხედი)
-                pygame.draw.rect(self.screen, '#228B22', 
-                                (sprite_x - sprite_w/2, y1 - sprite_h, sprite_w, sprite_h))
-            
-            # თუ სეგმენტი ეკრანს ქვემოდან გასცდა, აღარ ვხატავთ
-            if y2 >= y1:
-                continue
-
-            # ბალახი
-            pygame.draw.rect(self.screen, segment.color['grass'], (0, y2, WIDTH, y1 - y2))
-            # რამბლი
-            self.draw_polygon(segment.color['rumble'], x1, y1, w1 * 1.1, x2, y2, w2 * 1.1)
-            # გზა
-            self.draw_polygon(segment.color['road'], x1, y1, w1, x2, y2, w2)
-            
-            # ხაზები
-            if segment.color == COLORS['LIGHT']:
-                self.draw_polygon(COLORS['LIGHT']['lane'], x1, y1, w1 * 0.02, x2, y2, w2 * 0.02)
-
-        # 3. მანქანის ხატვა (ციკლის გარეთ!)
-        # WIDTH // 2 - 40 არის ცენტრი, 80 სიგანე, 40 სიმაღლე
-        pygame.draw.rect(self.screen, (255, 0, 0), (WIDTH // 2 - 40, HEIGHT - 100, 80, 40))
-        # main.py -> def render (ბოლოში)
-        self.hud.draw(self.screen, self.speed, self.distance)
+            # 4. სპიდომეტრი (HUD) - ყოველთვის ბოლოში, რომ ყველაფერს გადაეფაროს
+            self.hud.draw(self.screen, self.speed, self.distance)
+    
     def update(self):
         keys = pygame.key.get_pressed()
         self.player.update(keys)
